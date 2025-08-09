@@ -90,17 +90,14 @@ async function run() {
     // server.js (or your routes file)
     app.get("/artifacts/all", async (req, res) => {
       try {
-        // Extract page & limit from query params
         let { page = 1, limit = 9 } = req.query;
         page = parseInt(page);
         limit = parseInt(limit);
 
         const skip = (page - 1) * limit;
 
-        // Total count for pagination info
         const totalArtifacts = await artifactsCollection.countDocuments();
 
-        // Fetch artifacts with pagination
         const artifacts = await artifactsCollection
           .find()
           .skip(skip)
@@ -131,24 +128,36 @@ async function run() {
       verifyFirebaseToken,
       verifyEmail,
       async (req, res) => {
-        try {
-          const email = req.params.email;
-          if (!email) {
-            return res
-              .status(400)
-              .json({ error: "Email parameter is required" });
-          }
-
-          const filter = { "addedBy.email": email };
-          const myArtifacts = await artifactsCollection.find(filter).toArray();
-
-          res.status(200).json(myArtifacts);
-        } catch (error) {
-          console.error("Error fetching user artifacts:", error);
-          res.status(500).json({ error: "Internal server error" });
+        const email = req.params.email;
+        if (!email) {
+          return res.status(400).json({ error: "Email parameter is required" });
         }
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const filter = { "addedBy.email": email };
+
+        const totalArtifacts = await artifactsCollection.countDocuments(filter);
+
+        const myArtifacts = await artifactsCollection
+          .find(filter)
+          .skip(skip)
+          .limit(limit)
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        res.status(200).json({
+          page,
+          limit,
+          totalArtifacts,
+          totalPages: Math.ceil(totalArtifacts / limit),
+          artifacts: myArtifacts,
+        });
       }
     );
+
     app.post("/artifacts", verifyFirebaseToken, async (req, res) => {
       try {
         if (req.body.addedBy?.email !== req.decoded.email) {
