@@ -87,33 +87,27 @@ async function run() {
       const result = await artifactsCollection.find().toArray();
       res.send(result);
     });
-    // server.js (or your routes file)
     app.get("/artifacts/all", async (req, res) => {
-      try {
-        let { page = 1, limit = 9 } = req.query;
-        page = parseInt(page);
-        limit = parseInt(limit);
+      let { page = 1, limit = 9 } = req.query;
+      page = parseInt(page);
+      limit = parseInt(limit);
 
-        const skip = (page - 1) * limit;
+      const skip = (page - 1) * limit;
 
-        const totalArtifacts = await artifactsCollection.countDocuments();
+      const totalArtifacts = await artifactsCollection.countDocuments();
 
-        const artifacts = await artifactsCollection
-          .find()
-          .skip(skip)
-          .limit(limit)
-          .toArray();
+      const artifacts = await artifactsCollection
+        .find()
+        .skip(skip)
+        .limit(limit)
+        .toArray();
 
-        res.json({
-          total: totalArtifacts,
-          page,
-          totalPages: Math.ceil(totalArtifacts / limit),
-          artifacts,
-        });
-      } catch (error) {
-        console.error("Error fetching artifacts:", error);
-        res.status(500).json({ message: "Server Error" });
-      }
+      res.json({
+        total: totalArtifacts,
+        page,
+        totalPages: Math.ceil(totalArtifacts / limit),
+        artifacts,
+      });
     });
 
     app.get("/artifacts/:id", async (req, res) => {
@@ -129,31 +123,27 @@ async function run() {
       verifyEmail,
       async (req, res) => {
         const email = req.params.email;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 6;
+        const skip = (page - 1) * limit;
+
         if (!email) {
           return res.status(400).json({ error: "Email parameter is required" });
         }
-
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
-
         const filter = { "addedBy.email": email };
-
-        const totalArtifacts = await artifactsCollection.countDocuments(filter);
-
+        const total = await artifactsCollection.countDocuments(filter);
         const myArtifacts = await artifactsCollection
           .find(filter)
           .skip(skip)
           .limit(limit)
-          .sort({ createdAt: -1 })
           .toArray();
 
         res.status(200).json({
+          total,
           page,
           limit,
-          totalArtifacts,
-          totalPages: Math.ceil(totalArtifacts / limit),
-          artifacts: myArtifacts,
+          totalPages: Math.ceil(total / limit),
+          data: myArtifacts,
         });
       }
     );
