@@ -332,6 +332,49 @@ async function run() {
         res.send(likedArtifacts);
       }
     );
+
+    app.get(
+      "/dashboard/stats/:email",
+      verifyFirebaseToken,
+      verifyEmail,
+      async (req, res) => {
+        const email = req.params.email;
+
+        const myArtifactsCount = await artifactsCollection.countDocuments({
+          "addedBy.email": email,
+        });
+
+        const likedCount = await artifactsCollection.countDocuments({
+          likedBy: email,
+        });
+
+        const artifactsByType = await artifactsCollection
+          .aggregate([
+            { $match: { "addedBy.email": email } },
+            {
+              $group: {
+                _id: "$type",
+                count: { $sum: 1 },
+              },
+            },
+            { $sort: { count: -1 } },
+          ])
+          .toArray();
+
+        res.json({
+          success: true,
+          stats: {
+            myArtifactsCount,
+            likedCount,
+            types: artifactsByType.map((item) => ({
+              type: item._id,
+              count: item.count,
+            })),
+            totalCategories: artifactsByType.length,
+          },
+        });
+      }
+    );
   } finally {
   }
 }
