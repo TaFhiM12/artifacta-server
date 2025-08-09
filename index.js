@@ -87,6 +87,37 @@ async function run() {
       const result = await artifactsCollection.find().toArray();
       res.send(result);
     });
+    // server.js (or your routes file)
+    app.get("/artifacts/all", async (req, res) => {
+      try {
+        // Extract page & limit from query params
+        let { page = 1, limit = 9 } = req.query;
+        page = parseInt(page);
+        limit = parseInt(limit);
+
+        const skip = (page - 1) * limit;
+
+        // Total count for pagination info
+        const totalArtifacts = await artifactsCollection.countDocuments();
+
+        // Fetch artifacts with pagination
+        const artifacts = await artifactsCollection
+          .find()
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+
+        res.json({
+          total: totalArtifacts,
+          page,
+          totalPages: Math.ceil(totalArtifacts / limit),
+          artifacts,
+        });
+      } catch (error) {
+        console.error("Error fetching artifacts:", error);
+        res.status(500).json({ message: "Server Error" });
+      }
+    });
 
     app.get("/artifacts/:id", async (req, res) => {
       const artifactId = req.params.id;
